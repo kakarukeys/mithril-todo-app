@@ -1,0 +1,174 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Todo App</title>
+
+        <style type="text/css">
+            button.remove {
+                margin-left: 0.5em;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="app"></div>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.3.2/backbone-min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/mithril/0.2.3/mithril.min.js"></script>
+        <script>
+            // Model
+            function Todo(description) {
+                return {description: m.prop(description)};
+            }
+
+            // Reducers (supposedly pure functions, but...)
+            var reducers = {
+                // name: function(todos, *args) { return todos; }
+                addTodo: function(todos, description) {
+                    todos.push(Todo(description));
+                    return todos;
+                },
+
+                removeTodo: function(todos, id) {
+                    todos.splice(id, 1);
+                    return todos;
+                }
+            };
+
+            // Store
+            var Store = function() {
+                var state = {
+                    todos: m.prop([])
+                };
+
+                return {
+                    getState: function() {
+                        return state;
+                    },
+
+                    // Action Creators
+                    listTodos: function(eventArgs) {
+                        m.request({method: "GET", url: "todos.json"}).then(function(response) {
+                            state.todos(_.map(response.data, function(rec) {
+                                return Todo(rec.description);
+                            }));
+                        });
+                    },
+                    addTodo: function(eventArgs) {
+                        // simulate calling backend to add a todo
+                        m.request({method: "GET", url: "todos.json"}).then(function() {
+                            state.todos(reducers["addTodo"](state.todos(), eventArgs.description));
+                        });
+                    },
+                    removeTodo: function(eventArgs) {
+                        // simulate calling backend to remove a todo
+                        m.request({method: "GET", url: "todos.json"}).then(function() {
+                            state.todos(reducers["removeTodo"](state.todos(), eventArgs.id));
+                        });
+                    }
+                };
+            };
+
+            // Global event bus (shared by all components)
+            var dispatcher = _.clone(Backbone.Events);
+
+            /* Components
+             *
+             * TodoApp
+             *     - TextInput
+             *     - TodoList
+             *         - TodoItem
+             *         - TodoItem
+             *         - TodoItem
+             */
+            var TextInput = {
+                controller: function(data) {
+                    /* data: {onEnter: function(text) {...}} */
+                    var that = this;
+
+                    // internal state
+                    this.text = m.prop('');
+
+                    this.onEnter = function(e) {
+                        if (e.keyCode === 13) {
+                            data.onEnter(e.target.value);
+                            that.text('');
+                        }
+                    }
+                },
+
+                view: function(ctrl) {
+                    return m("input", {
+                        // two-way binding with internal state
+                        oninput: m.withAttr("value", ctrl.text),
+                        value: ctrl.text(),
+
+                        onkeypress: ctrl.onEnter
+                    });
+                }
+            };
+
+            var TodoItem = {
+                view: function(ctrl, data) {
+                    /* data: {todo: Todo object, onRemove: function() {...}} */
+                    return m("div", [
+                        m("span", data.todo.description()),
+                        m("button[class=remove]", {onclick: data.onRemove}, "X")
+                    ]);
+                }
+            };
+
+            var TodoList = {
+                view: function(ctrl, data) {
+                    /* data: {todos: list of Todo objects } */
+                    return m("ul", _.map(data.todos, function(todo, id) {
+                        return m("li", m(TodoItem, {
+                            todo: todo,
+
+                            // trigger an action
+                            onRemove: function() {dispatcher.trigger("removeTodo", {id: id});}
+                        }));
+                    }));
+                }
+            };
+
+            var TodoApp = {
+                controller: function() {
+                    var that = this,
+                        store = Store();
+
+                    this.appState = store.getState();
+
+                    // start listening
+                    dispatcher.on("all", function(eventName, eventArgs) {
+                        store[eventName](eventArgs);
+                    });
+
+                    dispatcher.trigger("listTodos");
+                },
+
+                view: function(ctrl) {
+                    var todos = ctrl.appState.todos();
+
+                    return [
+                        m(TextInput, {
+                            onEnter: function(text) {
+                                // trigger an action
+                                dispatcher.trigger("addTodo", {description: text});}
+                            }
+                        ),
+
+                        _.size(todos) ?
+                            m(TodoList, {todos: todos}) :
+                            m("p", "hurray no task!")
+                    ];
+                }
+            };
+
+            // initialization
+            m.mount(document.getElementById("app"), TodoApp);
+        </script>
+    </body>
+</html>
