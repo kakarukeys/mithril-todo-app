@@ -3,7 +3,6 @@
 the purpose of this exercise is to
   - learn [mithril.js](http://mithril.js.org/)
   - explore component architecture
-  - implement component-component communication using *Backbone Event*
   - explore the store pattern
 
 by using as few number of external dependencies as possible to avoid distractions from the learning goals.
