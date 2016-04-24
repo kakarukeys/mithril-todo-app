@@ -90,8 +90,12 @@
 
                     this.onEnter = function(e) {
                         if (e.keyCode === 13) {
-                            data.onEnter(e.target.value);
-                            that.text('');
+                            var inputText = e.target.value.trim();
+
+                            if (inputText) {
+                                data.onEnter(inputText);
+                                that.text('');
+                            }
                         }
                     }
                 },
@@ -123,9 +127,7 @@
                     return m("ul", _.map(data.todos, function(todo, id) {
                         return m("li", m(TodoItem, {
                             todo: todo,
-
-                            // trigger an action
-                            onRemove: function() {store.removeTodo({id: id});}
+                            onRemove: function() {store.removeTodo({id: id});}  // trigger an action
                         }));
                     }));
                 }
@@ -133,11 +135,7 @@
 
             var TodoApp = {
                 controller: function() {
-                    var that = this,
-                        store = Store();
-
                     this.appState = store.getState();
-
                     store.listTodos();
                 },
 
@@ -146,15 +144,12 @@
 
                     return [
                         m(TextInput, {
-                            onEnter: function(text) {
-                                // trigger an action
-                                store.addTodo({description: text});
-                            }
-                        ),
+                            onEnter: function(text) {store.addTodo({description: text});}   // trigger an action
+                        }),
 
-                        _.size(todos) ?
-                            m(TodoList, {todos: todos}) :
-                            m("p", "hurray no task!")
+                        _.isEmpty(todos) ?
+                            m("p", "hurray no task!") :
+                            m(TodoList, {todos: todos})
                     ];
                 }
             };
